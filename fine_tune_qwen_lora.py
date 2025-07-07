@@ -7,10 +7,10 @@ This script provides multiple LoRA configurations and better customization.
 import os
 import pandas as pd
 import torch
+import torch.distributed as dist
 from datasets import Dataset
 from transformers import TrainingArguments, Trainer
 from unsloth import FastLanguageModel
-import wandb
 from sklearn.model_selection import train_test_split
 from lora_config import get_lora_config, apply_lora_config, print_available_configs
 
@@ -127,7 +127,7 @@ def create_training_arguments(output_dir="./qwen-finetuned",
         fp16=True,
         dataloader_pin_memory=False,
         remove_unused_columns=False,
-        report_to="wandb" if wandb.run else None,
+        report_to=None,
         run_name="qwen-1.5b-lora-finetune",
     )
 
@@ -190,6 +190,16 @@ def print_training_info(model, lora_config, dataset_size, num_epochs, batch_size
 def main():
     """Main training function."""
     
+    # Check if distributed training is enabled
+    local_rank = int(os.environ.get("LOCAL_RANK", -1))
+    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    
+    if local_rank != -1:
+        print(f"🚀 Distributed training enabled: Rank {local_rank}/{world_size}")
+        # Initialize distributed training
+        dist.init_process_group(backend="nccl")
+        torch.cuda.set_device(local_rank)
+    
     # Configuration
     MODEL_NAME = "Qwen/Qwen1.5-1.8B"
     DATASET_PATH = "sample_dataset.csv"
@@ -209,22 +219,6 @@ def main():
     print_available_configs()
     
     print(f"\nUsing LoRA configuration: {LORA_CONFIG_NAME}")
-    
-    # Initialize wandb (optional)
-    try:
-        wandb.init(
-            project="qwen-lora-finetune", 
-            name=f"qwen-1.5b-{LORA_CONFIG_NAME}",
-            config={
-                "model": MODEL_NAME,
-                "lora_config": LORA_CONFIG_NAME,
-                "epochs": NUM_EPOCHS,
-                "batch_size": BATCH_SIZE,
-                "max_seq_length": MAX_SEQ_LENGTH
-            }
-        )
-    except:
-        print("Wandb not available, continuing without logging")
     
     # Check if CUDA is available
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -263,6 +257,11 @@ def main():
         per_device_train_batch_size=BATCH_SIZE,
         learning_rate=lora_config.learning_rate
     )
+    
+    # Add distributed training settings if enabled
+    if local_rank != -1:
+        training_args.local_rank = local_rank
+        training_args.dataloader_pin_memory = False
     
     # Initialize trainer
     trainer = Trainer(
@@ -317,9 +316,9 @@ def main():
     print(f"Model saved to: {OUTPUT_DIR}")
     print(f"LoRA configuration: {lora_config.name}")
     
-    # Clean up wandb
-    if wandb.run:
-        wandb.finish()
+    # Clean up distributed training
+    if local_rank != -1:
+        dist.destroy_process_group()
 
 if __name__ == "__main__":
     main() 

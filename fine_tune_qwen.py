@@ -10,7 +10,6 @@ import torch
 from datasets import Dataset
 from transformers import TrainingArguments, Trainer
 from unsloth import FastLanguageModel
-import wandb
 from sklearn.model_selection import train_test_split
 
 def load_and_prepare_dataset(csv_path, test_size=0.1, random_state=42):
@@ -134,7 +133,7 @@ def create_training_arguments(output_dir="./qwen-finetuned",
         fp16=True,
         dataloader_pin_memory=False,
         remove_unused_columns=False,
-        report_to="wandb" if wandb.run else None,
+        report_to=None,
         run_name="qwen-1.5b-finetune",
     )
 
@@ -169,12 +168,6 @@ def main():
     NUM_EPOCHS = 3
     BATCH_SIZE = 2
     LEARNING_RATE = 2e-4
-    
-    # Initialize wandb (optional)
-    try:
-        wandb.init(project="qwen-finetune", name="qwen-1.5b-instruction-tune")
-    except:
-        print("Wandb not available, continuing without logging")
     
     # Check if CUDA is available
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -231,10 +224,6 @@ def main():
     print(f"Evaluation results: {eval_results}")
     
     print("Training completed successfully!")
-    
-    # Clean up wandb
-    if wandb.run:
-        wandb.finish()
 
 if __name__ == "__main__":
     main() 

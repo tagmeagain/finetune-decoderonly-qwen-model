@@ -4,6 +4,7 @@ This project provides a complete setup for fine-tuning the Qwen 1.5B model using
 
 ## Features
 
+- **Docker Support**: Complete containerized setup to avoid environment issues
 - **LoRA Fine-tuning**: Uses Unsloth with LoRA (Low-Rank Adaptation) for efficient parameter-efficient fine-tuning
 - **Multiple LoRA Configurations**: Pre-configured settings for different hardware and requirements
 - **4-bit Quantization**: Memory-efficient training with Unsloth optimizations
@@ -12,53 +13,54 @@ This project provides a complete setup for fine-tuning the Qwen 1.5B model using
 - **Inference Script**: Test your fine-tuned model with interactive prompts
 - **Sample Dataset**: Includes a sample machine learning Q&A dataset
 - **Hardware Analysis**: Automatic hardware detection and configuration recommendations
+- **No Wandb Dependencies**: Clean setup without external logging dependencies
 
 ## Project Structure
 
 ```
 fine-tune-qwen/
-├── requirements.txt              # Python dependencies
 ├── sample_dataset.csv            # Sample dataset for testing
 ├── fine_tune_qwen.py             # Basic fine-tuning script
-├── fine_tune_qwen_lora.py        # Enhanced LoRA fine-tuning script
+├── fine_tune_qwen_lora.py        # Enhanced LoRA fine-tuning script (distributed ready)
 ├── lora_config.py                # LoRA configuration presets
 ├── choose_lora_config.py         # Interactive LoRA config chooser
 ├── inference.py                  # Inference script for testing
 ├── create_dataset.py             # Dataset creation utility
-├── setup.py                      # Automated setup script
-├── install_dependencies.py       # Specialized dependency installer
-├── quick_start.py                # Guided quick start process
+├── Dockerfile                    # Docker container definition
+├── DOCKER_COMMANDS.md            # Simple Docker usage guide
 └── README.md                     # This file
 ```
 
-## Installation
+## Quick Start with Docker
 
-1. **Clone or download this repository**
+### 1. Build the Docker image
+```bash
+docker build -t qwen-finetune .
+```
 
-2. **Install dependencies** (choose one method):
+### 2. Run the container
+```bash
+docker run -d --name qwen-container --gpus all -p 8888:8888 qwen-finetune
+```
 
-   **Method 1: Automated installation (Recommended)**
-   ```bash
-   python install_dependencies.py
-   ```
+### 3. Get inside the container
+```bash
+docker exec -it qwen-container bash
+```
 
-   **Method 2: Manual installation**
-   ```bash
-   # First install PyTorch 2.7+ (required for Unsloth)
-   pip install torch>=2.7.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-   
-   # Then install other dependencies
-   pip install -r requirements.txt
-   ```
+### 4. Run distributed training
+```bash
+# For 2 GPUs
+torchrun --nproc_per_node=2 --master_port=29500 fine_tune_lora.py
 
-   **Method 3: Quick setup**
-   ```bash
-   python setup.py
-   ```
+# For 4 GPUs  
+torchrun --nproc_per_node=4 --master_port=29500 fine_tune_lora.py
 
-3. **Optional: Install CUDA for GPU acceleration**
-   - Make sure you have CUDA installed if you want to use GPU acceleration
-   - The script will automatically detect and use GPU if available
+# For 8 GPUs
+torchrun --nproc_per_node=8 --master_port=29500 fine_tune_lora.py
+```
+
+See `DOCKER_COMMANDS.md` for complete Docker usage guide.
 
 ## Dataset Format
 
@@ -80,7 +82,7 @@ System,user,assistant
 
 Replace `sample_dataset.csv` with your own dataset, or modify the script to point to your CSV file.
 
-### 2. Choose LoRA Configuration (Recommended)
+### 2. Choose LoRA Configuration (Optional)
 
 ```bash
 python choose_lora_config.py
@@ -90,14 +92,13 @@ This will analyze your hardware and recommend the best LoRA configuration.
 
 ### 3. Fine-tune the Model
 
-**Option A: Enhanced LoRA Fine-tuning (Recommended)**
+**Docker Commands:**
 ```bash
-python fine_tune_qwen_lora.py
-```
+# Single GPU training
+torchrun --nproc_per_node=1 --master_port=29500 fine_tune_qwen_lora.py
 
-**Option B: Basic Fine-tuning**
-```bash
-python fine_tune_qwen.py
+# Multi-GPU training (all available GPUs)
+torchrun --nproc_per_node=auto --master_port=29500 fine_tune_qwen_lora.py
 ```
 
 **Configuration Options** (modify in `fine_tune_qwen_lora.py`):
@@ -107,7 +108,7 @@ python fine_tune_qwen.py
 - `NUM_EPOCHS`: Number of training epochs (default: 3)
 - `BATCH_SIZE`: Training batch size (default: 2)
 
-### 3. Test the Fine-tuned Model
+### 4. Test the Fine-tuned Model
 
 ```bash
 python inference.py
@@ -156,95 +157,56 @@ The project includes multiple pre-configured LoRA settings optimized for differe
 - **GPU**: NVIDIA GPU with 8GB+ VRAM
 - **RAM**: 16GB+ system RAM
 - **Storage**: 20GB+ free space
+- **CUDA**: Version 12.1 or higher
+
+### Multi-GPU Setup
+- **GPUs**: 2-8 NVIDIA GPUs for distributed training
+- **NCCL**: Automatically configured in Docker
+- **Memory**: 8GB+ VRAM per GPU recommended
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **PyTorch Version Error**
-   - **Error**: `requirement torch>=2.7`
-   - **Solution**: Use the automated installation script:
-     ```bash
-     python install_dependencies.py
-     ```
-   - **Alternative**: Install PyTorch 2.7+ manually first:
-     ```bash
-     pip install torch>=2.7.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-     ```
+1. **CUDA Out of Memory**
+   - Reduce batch size in the script
+   - Use a lower LoRA rank configuration
+   - Enable gradient checkpointing
 
-2. **Out of Memory Errors**
-   - Reduce `BATCH_SIZE` in the script
-   - Reduce `MAX_SEQ_LENGTH`
-   - Use gradient accumulation (already configured)
+2. **PyTorch Version Issues**
+   - Docker setup includes correct PyTorch 2.7+ version
+   - All dependencies are pre-installed in container
 
-3. **Slow Training**
-   - Ensure you're using a GPU
-   - Check if CUDA is properly installed
-   - Consider reducing the dataset size for testing
+3. **Dataset Loading Issues**
+   - Ensure CSV format matches the expected columns
+   - Check file permissions and paths
 
-4. **Model Loading Errors**
-   - Ensure all dependencies are installed
-   - Check internet connection for model download
-   - Verify the model path is correct
-
-5. **Unsloth Installation Issues**
-   - Make sure PyTorch 2.7+ is installed first
-   - Try installing from source: `pip install git+https://github.com/unslothai/unsloth.git`
-   - Check if you have enough disk space (Unsloth is large)
+4. **Distributed Training Issues**
+   - Ensure all GPUs are visible: `nvidia-smi`
+   - Check NCCL environment variables
+   - Use different master ports for multiple runs
 
 ### Performance Tips
 
-- Use a GPU for significantly faster training
-- Start with a small dataset to test the setup
-- Monitor training progress with wandb (optional)
-- Adjust learning rate based on your dataset size
+1. **Memory Optimization**
+   - Use 4-bit quantization (enabled by default)
+   - Enable gradient checkpointing
+   - Use appropriate LoRA rank for your GPU
 
-## Customization
+2. **Speed Optimization**
+   - Use mixed precision training (enabled by default)
+   - Increase batch size if memory allows
+   - Use multiple GPUs for distributed training
 
-### Using Different Models
-
-To use a different Qwen model, change the `MODEL_NAME` in `fine_tune_qwen.py`:
-
-```python
-MODEL_NAME = "Qwen/Qwen1.5-7B"  # For 7B model
-MODEL_NAME = "Qwen/Qwen1.5-14B" # For 14B model
-```
-
-### Adjusting Training Parameters
-
-Modify the training arguments in the `create_training_arguments` function:
-
-```python
-training_args = create_training_arguments(
-    output_dir="./my-model",
-    num_train_epochs=5,           # More epochs
-    per_device_train_batch_size=4, # Larger batch size
-    learning_rate=1e-4,           # Different learning rate
-)
-```
-
-## Sample Output
-
-After fine-tuning, you can test the model:
-
-```
-Question: What is machine learning?
-Response: Machine learning is a subset of artificial intelligence that enables computers to learn and improve from experience without being explicitly programmed. It involves algorithms that can identify patterns in data and make predictions or decisions based on those patterns.
-
-Question: How do you handle missing data?
-Response: Missing data can be handled through several methods: 1) Deletion (removing rows or columns with missing values), 2) Imputation (filling missing values with mean, median, mode, or predicted values), 3) Using algorithms that handle missing data natively, or 4) Creating a separate category for missing values.
-```
+3. **Quality Optimization**
+   - Use higher LoRA rank for better quality
+   - Increase training epochs
+   - Use better quality training data
 
 ## License
 
-This project is for educational and research purposes. Please ensure you comply with the license terms of the Qwen model and Unsloth library.
+This project is for educational and research purposes. Please ensure you comply with the licenses of the models and datasets you use.
 
 ## Contributing
 
-Feel free to submit issues, feature requests, or pull requests to improve this fine-tuning setup.
-
-## Acknowledgments
-
-- [Unsloth](https://github.com/unslothai/unsloth) for efficient fine-tuning optimizations
-- [Qwen](https://github.com/QwenLM/Qwen) for the base model
-- [Hugging Face](https://huggingface.co/) for the transformers library 
+Feel free to submit issues and enhancement requests! 
