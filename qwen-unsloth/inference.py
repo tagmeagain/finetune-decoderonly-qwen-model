@@ -48,8 +48,11 @@ def generate_response(model, tokenizer, instruction, input_text="", max_new_toke
     # Create prompt in the same Alpaca format as training
     prompt = create_alpaca_prompt_format(instruction, input_text)
     
+    # Determine device
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
     # Tokenize input
-    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
     
     # Generate response
     with torch.no_grad():
@@ -85,61 +88,66 @@ def main():
     
     args = parser.parse_args()
     
-    # Load model
-    model, tokenizer = load_model(args.model_path)
-    
-    print("\n" + "="*60)
-    print("🤖 Qwen Fine-tuned Model Inference")
-    print("="*60)
-    print("Type 'quit' to exit")
-    print()
-    
-    # Sample questions
-    sample_questions = [
-        "What is machine learning?",
-        "How does a neural network work?",
-        "What is the difference between supervised and unsupervised learning?",
-        "How do you handle missing data in machine learning?",
-        "What is overfitting and how do you prevent it?",
-        "Explain the concept of cross-validation.",
-        "What is the bias-variance tradeoff?",
-        "How does gradient descent work?",
-        "What is the difference between precision and recall?",
-        "Explain the concept of ensemble methods."
-    ]
-    
-    print("📚 Sample questions:")
-    for i, question in enumerate(sample_questions, 1):
-        print(f"{i:2d}. {question}")
-    print()
-    
-    # Interactive mode
-    while True:
-        try:
-            user_input = input("💬 Enter your question: ").strip()
-            
-            if user_input.lower() in ['quit', 'exit', 'q']:
-                print("👋 Goodbye!")
+    try:
+        # Load model
+        model, tokenizer = load_model(args.model_path)
+        
+        print("\n" + "="*60)
+        print("🤖 Qwen Fine-tuned Model Inference")
+        print("="*60)
+        print("Type 'quit' to exit")
+        print()
+        
+        # Sample questions
+        sample_questions = [
+            "What is machine learning?",
+            "How does a neural network work?",
+            "What is the difference between supervised and unsupervised learning?",
+            "How do you handle missing data in machine learning?",
+            "What is overfitting and how do you prevent it?",
+            "Explain the concept of cross-validation.",
+            "What is the bias-variance tradeoff?",
+            "How does gradient descent work?",
+            "What is the difference between precision and recall?",
+            "Explain the concept of ensemble methods."
+        ]
+        
+        print("📚 Sample questions:")
+        for i, question in enumerate(sample_questions, 1):
+            print(f"{i:2d}. {question}")
+        print()
+        
+        # Interactive mode
+        while True:
+            try:
+                user_input = input("💬 Enter your question: ").strip()
+                
+                if user_input.lower() in ['quit', 'exit', 'q']:
+                    print("👋 Goodbye!")
+                    break
+                
+                if not user_input:
+                    continue
+                
+                print("\n🤔 Generating response...")
+                response = generate_response(
+                    model, tokenizer, user_input,
+                    max_new_tokens=args.max_new_tokens,
+                    temperature=args.temperature
+                )
+                
+                print(f"\n🤖 Response: {response}\n")
+                print("-" * 60)
+                
+            except KeyboardInterrupt:
+                print("\n👋 Goodbye!")
                 break
-            
-            if not user_input:
-                continue
-            
-            print("\n🤔 Generating response...")
-            response = generate_response(
-                model, tokenizer, user_input,
-                max_new_tokens=args.max_new_tokens,
-                temperature=args.temperature
-            )
-            
-            print(f"\n🤖 Response: {response}\n")
-            print("-" * 60)
-            
-        except KeyboardInterrupt:
-            print("\n👋 Goodbye!")
-            break
-        except Exception as e:
-            print(f"❌ Error: {e}")
+            except Exception as e:
+                print(f"❌ Error: {e}")
+                
+    except Exception as e:
+        print(f"❌ Failed to load model: {e}")
+        print("Make sure the model path is correct and the model has been trained successfully.")
 
 if __name__ == "__main__":
     main() 

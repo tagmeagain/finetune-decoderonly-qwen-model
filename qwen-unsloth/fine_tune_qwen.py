@@ -49,15 +49,16 @@ def create_alpaca_prompt_format(instruction, input_text, output):
     return prompt
 
 def formatting_prompts_func_with_eos(examples, tokenizer):
-    """Format prompts with EOS token"""
-    prompts = []
+    """Format prompts with EOS token - returns dict with 'text' field"""
+    texts = []
     EOS_TOKEN = tokenizer.eos_token  # Must add EOS_TOKEN
     
     for instruction, input_text, output in zip(examples["instruction"], examples["input"], examples["output"]):
         # Must add EOS_TOKEN, otherwise your generation will go on forever!
-        prompt = create_alpaca_prompt_format(instruction, input_text, output) + EOS_TOKEN
-        prompts.append(prompt)
-    return prompts
+        text = create_alpaca_prompt_format(instruction, input_text, output) + EOS_TOKEN
+        texts.append(text)
+    
+    return {"text": texts}
 
 def main():
     # Configuration
@@ -123,6 +124,10 @@ def main():
     def formatting_prompts_func(examples):
         return formatting_prompts_func_with_eos(examples, tokenizer)
     
+    # Apply formatting to dataset
+    dataset = dataset.map(formatting_prompts_func, batched=True, remove_columns=dataset.column_names)
+    print(f"✅ Dataset formatted with {len(dataset)} examples")
+    
     # Training arguments
     training_args = TrainingArguments(
         output_dir=OUTPUT_DIR,
@@ -156,7 +161,6 @@ def main():
         args=training_args,
         max_seq_length=MAX_SEQ_LENGTH,
         dataset_text_field="text",
-        formatting_func=formatting_prompts_func,
         packing=False,
     )
     
