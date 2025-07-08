@@ -25,11 +25,19 @@ def load_model(model_path):
 
 def generate_response(model, tokenizer, instruction, input_text="", max_new_tokens=512, temperature=0.7):
     """Generate response for a given instruction"""
-    # Create prompt in the same format as training
-    if input_text:
-        prompt = f"### Instruction:\n{instruction}\n\n### Input:\n{input_text}\n\n### Response:\n"
-    else:
-        prompt = f"### Instruction:\n{instruction}\n\n### Response:\n"
+    # Create prompt in the same Alpaca format as training
+    alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+{}
+
+### Input:
+{}
+
+### Response:
+"""
+    
+    prompt = alpaca_prompt.format(instruction, input_text)
     
     # Tokenize input
     inputs = tokenizer(prompt, return_tensors="pt").to("cuda")

@@ -7,7 +7,7 @@ Based on the Unsloth Colab notebook
 import torch
 from transformers import TrainingArguments
 from trl import SFTTrainer
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 import json
 import os
 from unsloth import FastLanguageModel
@@ -27,14 +27,6 @@ def load_alpaca_dataset(file_path):
         })
     
     return Dataset.from_list(formatted_data)
-
-def create_prompt_format(instruction, input_text, output):
-    """Create prompt in the format expected by Qwen"""
-    if input_text:
-        prompt = f"### Instruction:\n{instruction}\n\n### Input:\n{input_text}\n\n### Response:\n{output}"
-    else:
-        prompt = f"### Instruction:\n{instruction}\n\n### Response:\n{output}"
-    return prompt
 
 def main():
     # Configuration
@@ -59,16 +51,6 @@ def main():
         print(f"   Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
     else:
         print("⚠️  No GPU detected, using CPU (this will be very slow)")
-    
-    # Load dataset
-    print(f"📊 Loading dataset from {DATASET_PATH}...")
-    if not os.path.exists(DATASET_PATH):
-        print(f"❌ Dataset file not found: {DATASET_PATH}")
-        print("Please create alpaca_dataset.json with your data")
-        return
-    
-    dataset = load_alpaca_dataset(DATASET_PATH)
-    print(f"✅ Loaded {len(dataset)} training examples")
     
     # Load model and tokenizer
     print(f"🤖 Loading model: {MODEL_NAME}")
@@ -95,14 +77,46 @@ def main():
         loftq_config=None,
     )
     
-    # Prepare dataset
-    print("📝 Preparing dataset...")
+    # Load dataset
+    print(f"📊 Loading dataset from {DATASET_PATH}...")
+    if not os.path.exists(DATASET_PATH):
+        print(f"❌ Dataset file not found: {DATASET_PATH}")
+        print("Please create alpaca_dataset.json with your data")
+        return
+    
+    dataset = load_alpaca_dataset(DATASET_PATH)
+    print(f"✅ Loaded {len(dataset)} training examples")
+    
+    # Prepare dataset with proper Alpaca prompt format and EOS token
+    print("📝 Preparing dataset with Alpaca prompt format...")
+    
+    alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+{}
+
+### Input:
+{}
+
+### Response:
+{}"""
+
+    EOS_TOKEN = tokenizer.eos_token  # Must add EOS_TOKEN
+    
     def formatting_prompts_func(examples):
-        prompts = []
-        for instruction, input_text, output in zip(examples["instruction"], examples["input"], examples["output"]):
-            prompt = create_prompt_format(instruction, input_text, output)
-            prompts.append(prompt)
-        return prompts
+        instructions = examples["instruction"]
+        inputs = examples["input"]
+        outputs = examples["output"]
+        texts = []
+        for instruction, input, output in zip(instructions, inputs, outputs):
+            # Must add EOS_TOKEN, otherwise your generation will go on forever!
+            text = alpaca_prompt.format(instruction, input, output) + EOS_TOKEN
+            texts.append(text)
+        return {"text": texts}
+    
+    # Apply formatting to dataset
+    dataset = dataset.map(formatting_prompts_func, batched=True)
+    print(f"✅ Dataset formatted with {len(dataset)} examples")
     
     # Training arguments
     training_args = TrainingArguments(
@@ -137,7 +151,6 @@ def main():
         args=training_args,
         max_seq_length=MAX_SEQ_LENGTH,
         dataset_text_field="text",
-        formatting_func=formatting_prompts_func,
         packing=False,
     )
     
@@ -160,7 +173,16 @@ def main():
     FastLanguageModel.for_inference(model)
     
     # Sample test
-    test_prompt = "### Instruction:\nWhat is machine learning?\n\n### Response:\n"
+    test_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+What is machine learning?
+
+### Input:
+
+
+### Response:
+"""
     inputs = tokenizer(test_prompt, return_tensors="pt").to("cuda")
     
     with torch.no_grad():
