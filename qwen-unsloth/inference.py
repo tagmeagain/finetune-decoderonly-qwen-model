@@ -23,9 +23,8 @@ def load_model(model_path):
     
     return model, tokenizer
 
-def generate_response(model, tokenizer, instruction, input_text="", max_new_tokens=512, temperature=0.7):
-    """Generate response for a given instruction"""
-    # Create prompt in the same Alpaca format as training
+def create_alpaca_prompt_format(instruction, input_text):
+    """Create prompt in the Alpaca format for inference"""
     alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
 ### Instruction:
@@ -37,7 +36,17 @@ def generate_response(model, tokenizer, instruction, input_text="", max_new_toke
 ### Response:
 """
     
-    prompt = alpaca_prompt.format(instruction, input_text)
+    if input_text:
+        prompt = alpaca_prompt.format(instruction, input_text)
+    else:
+        prompt = alpaca_prompt.format(instruction, "")
+    
+    return prompt
+
+def generate_response(model, tokenizer, instruction, input_text="", max_new_tokens=512, temperature=0.7):
+    """Generate response for a given instruction"""
+    # Create prompt in the same Alpaca format as training
+    prompt = create_alpaca_prompt_format(instruction, input_text)
     
     # Tokenize input
     inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
