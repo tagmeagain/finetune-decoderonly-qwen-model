@@ -1,0 +1,67 @@
+# Axolotl configuration for Qwen 2.1.5 fine-tuning
+# Model configuration
+base_model: Qwen/Qwen2.1.5-1.8B
+model_type: Qwen2ForCausalLM
+trust_remote_code: true
+
+# LoRA configuration
+adapter: lora
+lora_model_dir: ./lora_outputs
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.1
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+# Training configuration
+output_dir: ./outputs
+num_epochs: 3
+micro_batch_size: 2
+gradient_accumulation_steps: 4
+learning_rate: 2e-4
+lr_scheduler: cosine
+warmup_steps: 100
+logging_steps: 10
+save_steps: 500
+eval_steps: 500
+save_total_limit: 3
+
+# Data configuration
+datasets:
+  - path: ./sample_dataset.csv
+    type: csv
+    field_system: System
+    field_question: user
+    field_answer: assistant
+    field_messages: messages
+    format: chat_template
+
+# Training arguments
+bf16: true
+tf32: true
+gradient_checkpointing: true
+group_by_length: true
+ddp_timeout: 7200
+dataloader_pin_memory: false
+
+# Evaluation
+eval_strategy: steps
+eval_accumulation_steps: 4
+eval_dataset_ratio: 0.1
+
+# Logging
+logging_dir: ./logs
+report_to: wandb
+run_name: qwen2.1.5-lora-finetune
+
+# DeepSpeed configuration (optional)
+deepspeed: null
+
+# Flash Attention
+flash_attention: true 
