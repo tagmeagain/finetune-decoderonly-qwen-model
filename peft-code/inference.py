@@ -42,30 +42,15 @@ def load_model(model_path, lora_path=None):
     
     return model, tokenizer
 
-def create_alpaca_prompt_format(instruction, input_text):
-    """Create prompt in the Alpaca format for inference"""
-    alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
-
-### Instruction:
-{}
-
-### Input:
-{}
-
-### Response:
-"""
-    
-    if input_text:
-        prompt = alpaca_prompt.format(instruction, input_text)
-    else:
-        prompt = alpaca_prompt.format(instruction, "")
-    
+def create_simple_prompt_format(input_text):
+    """Create simple prompt format for inference"""
+    prompt = f"Input: {input_text}\nOutput: "
     return prompt
 
-def generate_response(model, tokenizer, instruction, input_text="", max_new_tokens=512, temperature=0.7):
-    """Generate response for a given instruction"""
-    # Create prompt in the same Alpaca format as training
-    prompt = create_alpaca_prompt_format(instruction, input_text)
+def generate_response(model, tokenizer, input_text, max_new_tokens=512, temperature=0.7):
+    """Generate response for a given input"""
+    # Create prompt in the same simple format as training
+    prompt = create_simple_prompt_format(input_text)
     
     # Determine device
     device = model.device
@@ -91,8 +76,8 @@ def generate_response(model, tokenizer, instruction, input_text="", max_new_toke
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     
     # Extract the response part
-    if "### Response:\n" in response:
-        response = response.split("### Response:\n")[-1].strip()
+    if "Output: " in response:
+        response = response.split("Output: ")[-1].strip()
     
     return response
 

@@ -12,9 +12,13 @@ else
 fi
 
 # Check if dataset exists
-if [ ! -f "alpaca_dataset.json" ]; then
-    echo "❌ Dataset file 'alpaca_dataset.json' not found!"
-    echo "Please create the dataset file before running training."
+if [ ! -f "dataset.json" ]; then
+    echo "❌ Dataset file 'dataset.json' not found!"
+    echo "Please create dataset.json with your input/output data"
+    echo "Expected format:"
+    echo '['
+    echo '  {"input": "your input text", "output": "your output text"}'
+    echo ']'
     exit 1
 fi
 

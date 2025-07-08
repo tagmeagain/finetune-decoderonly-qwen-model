@@ -21,7 +21,7 @@ peft-code/
 ├── fine_tune_qwen_peft.py    # Main fine-tuning script with SFTConfig
 ├── inference.py              # Inference script
 ├── train.sh                  # Training script
-├── alpaca_dataset.json       # Sample dataset in Alpaca format
+├── dataset.json              # Sample dataset with input/output format
 ├── requirements.txt          # Python dependencies
 ├── Dockerfile               # Docker container definition
 └── README.md                # This file
@@ -57,7 +57,7 @@ The main configuration is in `fine_tune_qwen_peft.py`:
 ```python
 # Configuration
 MODEL_NAME = "Qwen/Qwen1.5-1.8B"
-DATASET_PATH = "./alpaca_dataset.json"
+DATASET_PATH = "./dataset.json"
 OUTPUT_DIR = "./outputs"
 MAX_SEQ_LENGTH = 2048
 BATCH_SIZE = 2
@@ -90,21 +90,19 @@ lora_config = LoraConfig(
 
 ## Dataset Format
 
-The project uses the Alpaca dataset format:
+The project uses a simple input/output dataset format:
 
 ```json
 [
   {
-    "instruction": "What is machine learning?",
-    "input": "",
+    "input": "What is machine learning?",
     "output": "Machine learning is a subset of artificial intelligence..."
   }
 ]
 ```
 
 ### Dataset Fields:
-- **instruction**: The task or question to be performed
-- **input**: Additional context or input (can be empty)
+- **input**: The question or input text
 - **output**: The expected response or answer
 
 ## Training

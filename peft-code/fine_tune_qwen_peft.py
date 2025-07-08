@@ -17,8 +17,8 @@ from peft import LoraConfig, get_peft_model, TaskType
 import json
 import os
 
-def load_alpaca_dataset(file_path):
-    """Load dataset in Alpaca format"""
+def load_simple_dataset(file_path):
+    """Load dataset with input and output columns"""
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
@@ -26,31 +26,15 @@ def load_alpaca_dataset(file_path):
     formatted_data = []
     for item in data:
         formatted_data.append({
-            "instruction": item.get("instruction", ""),
             "input": item.get("input", ""),
             "output": item.get("output", "")
         })
     
     return Dataset.from_list(formatted_data)
 
-def create_alpaca_prompt_format(instruction, input_text, output):
-    """Create prompt in the Alpaca format with EOS token"""
-    alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
-
-### Instruction:
-{}
-
-### Input:
-{}
-
-### Response:
-{}"""
-    
-    if input_text:
-        prompt = alpaca_prompt.format(instruction, input_text, output)
-    else:
-        prompt = alpaca_prompt.format(instruction, "", output)
-    
+def create_simple_prompt_format(input_text, output):
+    """Create simple prompt format with EOS token"""
+    prompt = f"Input: {input_text}\nOutput: {output}"
     return prompt
 
 def formatting_prompts_func(examples, tokenizer):
@@ -58,9 +42,9 @@ def formatting_prompts_func(examples, tokenizer):
     texts = []
     EOS_TOKEN = tokenizer.eos_token  # Must add EOS_TOKEN
     
-    for instruction, input_text, output in zip(examples["instruction"], examples["input"], examples["output"]):
+    for input_text, output in zip(examples["input"], examples["output"]):
         # Must add EOS_TOKEN, otherwise your generation will go on forever!
-        text = create_alpaca_prompt_format(instruction, input_text, output) + EOS_TOKEN
+        text = create_simple_prompt_format(input_text, output) + EOS_TOKEN
         texts.append(text)
     
     return {"text": texts}
@@ -68,7 +52,7 @@ def formatting_prompts_func(examples, tokenizer):
 def main():
     # Configuration
     MODEL_NAME = "Qwen/Qwen1.5-1.8B"
-    DATASET_PATH = "./alpaca_dataset.json"
+    DATASET_PATH = "./dataset.json"  # Changed to dataset.json
     OUTPUT_DIR = "./outputs"
     MAX_SEQ_LENGTH = 2048
     BATCH_SIZE = 2
@@ -93,10 +77,12 @@ def main():
     print(f"📊 Loading dataset from {DATASET_PATH}...")
     if not os.path.exists(DATASET_PATH):
         print(f"❌ Dataset file not found: {DATASET_PATH}")
-        print("Please create alpaca_dataset.json with your data")
+        print("Please create dataset.json with your input/output data")
+        print("Expected format:")
+        print('[\n  {"input": "your input text", "output": "your output text"}\n]')
         return
     
-    dataset = load_alpaca_dataset(DATASET_PATH)
+    dataset = load_simple_dataset(DATASET_PATH)
     print(f"✅ Loaded {len(dataset)} training examples")
     
     # Load model and tokenizer
@@ -207,7 +193,7 @@ def main():
     print("\n🧪 Testing the model...")
     
     # Sample test
-    test_prompt = create_alpaca_prompt_format("What is machine learning?", "", "")
+    test_prompt = create_simple_prompt_format("What is machine learning?", "")
     inputs = tokenizer(test_prompt, return_tensors="pt").to(model.device)
     
     with torch.no_grad():
