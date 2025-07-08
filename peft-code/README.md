@@ -20,7 +20,6 @@ This project provides a simple and clean setup for fine-tuning the Qwen model us
 peft-code/
 ├── fine_tune_qwen_peft.py    # Main fine-tuning script with SFTConfig
 ├── inference.py              # Inference script
-├── train.sh                  # Training script
 ├── dataset.json              # Sample dataset with input/output format
 ├── requirements.txt          # Python dependencies
 ├── Dockerfile               # Docker container definition
@@ -46,7 +45,14 @@ docker exec -it qwen-peft-container bash
 
 ### 4. Start Training
 ```bash
-./train.sh
+# Single GPU
+python fine_tune_qwen_peft.py
+
+# Multi-GPU (2 GPUs)
+torchrun --nproc_per_node=2 --master_port=29500 fine_tune_qwen_peft.py
+
+# Multi-GPU (4 GPUs)
+torchrun --nproc_per_node=4 --master_port=29500 fine_tune_qwen_peft.py
 ```
 
 ## Configuration
@@ -117,9 +123,19 @@ python fine_tune_qwen_peft.py
 torchrun --nproc_per_node=2 --master_port=29500 fine_tune_qwen_peft.py
 ```
 
-### Using the Training Script
+### Using torchrun for Multi-GPU Training
 ```bash
-./train.sh
+# Single GPU
+python fine_tune_qwen_peft.py
+
+# Multi-GPU (2 GPUs)
+torchrun --nproc_per_node=2 --master_port=29500 fine_tune_qwen_peft.py
+
+# Multi-GPU (4 GPUs)
+torchrun --nproc_per_node=4 --master_port=29500 fine_tune_qwen_peft.py
+
+# Multi-GPU (8 GPUs)
+torchrun --nproc_per_node=8 --master_port=29500 fine_tune_qwen_peft.py
 ```
 
 ## Inference

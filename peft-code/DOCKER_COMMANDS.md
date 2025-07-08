@@ -19,7 +19,14 @@ docker exec -it qwen-peft-container bash
 
 ### 4. Start Training
 ```bash
-./train.sh
+# Single GPU
+python fine_tune_qwen_peft.py
+
+# Multi-GPU (2 GPUs)
+torchrun --nproc_per_node=2 --master_port=29500 fine_tune_qwen_peft.py
+
+# Multi-GPU (4 GPUs)
+torchrun --nproc_per_node=4 --master_port=29500 fine_tune_qwen_peft.py
 ```
 
 ## Alternative Commands
@@ -107,6 +114,30 @@ docker run -d --name qwen-peft-container \
   --gpus '"device=0"' \
   -p 8888:8888 \
   qwen-peft
+```
+
+## Torchrun Commands
+
+### Single GPU Training
+```bash
+docker exec -it qwen-peft-container python fine_tune_qwen_peft.py
+```
+
+### Multi-GPU Training with torchrun
+```bash
+# 2 GPUs
+docker exec -it qwen-peft-container torchrun --nproc_per_node=2 --master_port=29500 fine_tune_qwen_peft.py
+
+# 4 GPUs
+docker exec -it qwen-peft-container torchrun --nproc_per_node=4 --master_port=29500 fine_tune_qwen_peft.py
+
+# 8 GPUs
+docker exec -it qwen-peft-container torchrun --nproc_per_node=8 --master_port=29500 fine_tune_qwen_peft.py
+```
+
+### Check Available GPUs
+```bash
+docker exec -it qwen-peft-container nvidia-smi
 ```
 
 ## Troubleshooting Commands
